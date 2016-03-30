@@ -46,7 +46,9 @@ const list = function() { return Array.prototype.reduceRight.call( arguments, rc
 
 const fromArray = (arr) => arr.reduceRight( rcons, NIL );
 
-const fromObject = (obj) => Object.keys(obj).reduceRight( (acc,k) => cons(rcons(k,obj[k]),acc), NIL );
+const fromObject = (obj) => Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,obj[k]),acc), NIL );
+
+const toObject = (lst) => foldl(lst, (v,obj) => {obj[car(v)] = cdr(v); return obj}, {});
 
 const toArray = (lst) => foldl(lst, (v,arr) => {arr.push(v); return arr}, [] );
 
@@ -117,8 +119,8 @@ module.exports = {
 	foldl, foldr, map, filter, reverse, tail, head,
 	filterMap, mapFilter, flatten,	prependReversed, append, partition, 
 	merge, sort, range, memq, assq, member, assoc, apply, equal,
-	fromArray, fromObject,
-	count, list, join, toArray, sum, length, toString, isList, isPair, isNil, isProperList,
+	fromArray, fromObject, toArray, toObject,
+	count, list, join, sum, length, toString, isList, isPair, isNil, isProperList,
 	// aliases
 	reduce: foldl, reduceRight: foldr,
 } 
