@@ -1,5 +1,12 @@
 "use strict"
 
+const T = function(f) {
+	while (f && f instanceof Function) {
+		f = f.apply(f.context, f.args);
+	}
+	return f;
+}
+
 const Pair = function(h,t) { this.h = h; this.t = t; }
 
 const NIL = new Pair()
@@ -26,9 +33,13 @@ const cddr = (lst) => cdr(cdr(lst));
 
 const caar = (lst) => car(car(lst));
 
-const foldl = (lst, f, acc) => isNil(lst) ? acc : foldl(cdr(lst), f, f(car(lst), acc));
+const dofoldl = (lst, f, acc) => isNil(lst) ? acc : dofoldl.bind(null, cdr(lst), f, f(car(lst), acc));
 
-const foldr = (lst, f, acc) => isNil(lst) ? acc : f( car(lst), foldr(cdr(lst), f, acc));
+const foldl = (lst, f, acc) => T(dofoldl.bind(null, cdr(lst), f, f(car(lst), acc)));
+
+const reverse = (lst) => foldl(lst, cons, NIL);
+
+const foldr = (lst, f, acc) => foldl(reverse(lst), f, acc);
 
 const map = (lst, f) => isNil(lst) ? NIL : foldr(lst, (v,lst_) => cons(f(v), lst_), NIL);
 
@@ -37,8 +48,6 @@ const filter = (lst, p) => isNil(lst) ? NIL : foldr(lst, (v,lst_) => p(v) ? cons
 const mapFilter = (lst, f, p) => isNil(lst) ? NIL : foldr(lst, (v,lst_) => {const v_ = f(v); return p(v_) ? cons(v_, lst_) : lst_;}, NIL);
 
 const filterMap = (lst, p, f) => isNil(lst) ? NIL : foldr(lst, (v,lst_) => p(v) ? cons(f(v), lst_) : lst_, NIL);
-
-const reverse = (lst) => foldl(lst, cons, NIL);
 
 const count = (lst, p) => foldl(lst, (v,n) => p(v) ? n+1 : n, 0);
 
@@ -74,9 +83,13 @@ const partition = (lst, p) => new Pair(filter(lst,p), filter(lst,(v)=>!p(v)));
 
 const ref = (lst, i) => isNil(lst) ? NIL : i === 0 ? car(lst) : ref(cdr(lst), i-1);
 
-const tail = (lst, i) => isNil(lst) ? NIL : i === 0 ? lst : tail(cdr(lst), i-1);
+const dotail = (lst, i) => isNil(lst) || i === 0 ? lst : dotail.bind(null, cdr(lst), i-1);
 
-const head = (lst, i) => reverse(tail(reverse(lst), (length(lst)-i-1)));
+const tail = (lst, i) => T(dotail.bind(null, lst, i));
+
+const dohead = (lst, i, acc) => isNil(lst) || i === 0 ? reverse(acc) : dohead.bind(null, cdr(lst), i-1, cons(car(lst),acc));
+
+const head = (lst, i) => T(dohead.bind(null, lst, i, NIL));
 
 const lt = (a, b) => a < b;
 
@@ -93,12 +106,11 @@ const dosort = (lr, part, cmp) => isNil(part) ?
 
 const sort = (lst, cmp) => dosort(NIL, map(lst, list), cmp);
 
-const dorange = (init,limit,step) => (init === limit || step === 0 || 
-	(init > limit && step > 0 ) || (limit > init && step < 0 )) ? NIL : cons(init,range(init+step,limit,step));
+const dorange = (init,limit,step,acc) => (init === limit || step === 0 || (init > limit && step > 0 ) || (limit > init && step < 0 )) ? 
+	acc : 
+	dorange.bind(null,init+step,limit,step,cons(init,acc));
 
-const range = (init,limit,step) => (!limit && !step) ? dorange(0,init,1) :
-	!step ? dorange(init,limit,1) :
-	dorange(init,limit,step);
+const range = (init,limit,step) => T(dorange.bind(null, limit === undefined ? init : limit, limit === undefined ? 0 : init, step === undefined ? -1 : -step, NIL ));
 
 const equal = (lst1, lst2) => lst1 === lst2 ||
 	(isNil(lst1) && isNil(lst2)) ||  
@@ -122,7 +134,7 @@ module.exports = {
 	fromArray, fromObject, toArray, toObject,
 	count, list, join, sum, length, toString, isList, isPair, isNil, isProperList,
 	// aliases
-	reduce: foldl, reduceRight: foldr,
+	reduce: foldl, reduceRight: foldr, 
 } 
 
 Object.keys( module.exports )
