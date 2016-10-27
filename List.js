@@ -54,9 +54,9 @@ const filterMap = (lst, p, f) => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) =>
 
 const count = (lst, p) => reduce(lst, (v,n) => p(v) ? n+1 : n, 0)
 
-const list = function() { return Array.prototype.reduceRight.call( arguments, rcons, NIL ) } 
+const fromArray = arr => arr instanceof Array ? arr.reduceRight( (acc,v) => rcons(acc,fromArray(v)), NIL ) : arr;
 
-const fromArray = arr => arr.reduceRight( rcons, NIL )
+const list = (...args) => fromArray(args)
 
 const fromObject = obj => Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,obj[k]),acc), NIL )
 
@@ -102,10 +102,10 @@ const merge = (lst1, lst2, cmp) => isNil(lst1) ? lst2 : isNil(lst2) ? lst1 :
 		cons(car(lst2), merge(lst1, cdr(lst2), cmp))
 
 const dosort = (lr, part, cmp) => isNil(part) ?
-	isNil(cdr(lr)) ? car(lr) : dosort(part, lr) :
+	isNil(cdr(lr)) ? car(lr) : dosort(part, lr, cmp) :
 	isNil(cdr(part)) ?
-		dosort(cons(car(part), lr), cdr(part)) :
-		dosort(cons(merge(car(part), cadr(part), cmp), lr), cddr(part))
+		dosort(cons(car(part), lr), cdr(part), cmp) :
+		dosort(cons(merge(car(part), cadr(part), cmp), lr), cddr(part), cmp)
 
 const sort = (lst, cmp) => dosort(NIL, map(lst, list), cmp)
 
