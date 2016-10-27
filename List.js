@@ -58,17 +58,17 @@ const fromArray = arr => arr instanceof Array ? arr.reduceRight( (acc,v) => rcon
 
 const list = (...args) => fromArray(args)
 
-const fromObject = obj => Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,obj[k]),acc), NIL )
+const fromObject = obj => (obj instanceof Object && !(obj instanceof Array)) ? (Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,fromObject( obj[k] )),acc), NIL )) : obj
 
 const toObject = lst => reduce(lst, (v,obj) => {obj[car(v)] = cdr(v); return obj}, {})
 
 const toArray = lst => reduce(lst, (v,arr) => {arr.push(v); return arr}, [] )
 
-const dojoin = (lst, sep, dot, lbr, rbr) => isNil(lst) ? "" : 
-	(isList(car(lst)) ? (lbr + dojoin(car(lst), sep, dot, lbr, rbr) + rbr) : 
-		(String(car(lst)))) + (isList(cdr(lst)) ? (isNil(cdr(lst)) ? "" : (sep + dojoin(cdr(lst), sep, dot, lbr, rbr))) : (dot + String(cdr(lst))))
+const doJoin = (lst, sep, dot, lbr, rbr) => isNil(lst) ? "" :
+	(isList(car(lst)) ? (lbr + doJoin(car(lst), sep, dot, lbr, rbr) + rbr) :
+		(String(car(lst)))) + (isList(cdr(lst)) ? (isNil(cdr(lst)) ? "" : (sep + doJoin(cdr(lst), sep, dot, lbr, rbr))) : (dot + String(cdr(lst))))
 
-const join = (lst, sep, dot, lbr, rbr) => (lbr||"(") + dojoin(lst, sep||" ", dot||" . ", lbr||"(", rbr||")") + (rbr||")")
+const join = (lst, sep, dot, lbr, rbr) => (lbr||"(") + doJoin(lst, sep||" ", dot||" . ", lbr||"(", rbr||")") + (rbr||")")
 
 const sum = lst => reduce(lst, (v,acc) => v + acc, 0)   
 
@@ -86,13 +86,13 @@ const partition = (lst, p) => new Pair(filter(lst,p), filter(lst,(v)=>!p(v)))
 
 const ref = (lst, i) => isNil(lst) ? NIL : i === 0 ? car(lst) : ref(cdr(lst), i-1)
 
-const dotail = (lst, i) => isNil(lst) || i === 0 ? lst : dotail.bind(null, cdr(lst), i-1)
+const doTail = (lst, i) => isNil(lst) || i === 0 ? lst : doTail.bind(null, cdr(lst), i-1)
 
-const tail = (lst, i) => T(dotail.bind(null, lst, i))
+const tail = (lst, i) => T(doTail.bind(null, lst, i))
 
-const dohead = (lst, i, acc) => isNil(lst) || i === 0 ? reverse(acc) : dohead.bind(null, cdr(lst), i-1, cons(car(lst),acc))
+const doHead = (lst, i, acc) => isNil(lst) || i === 0 ? reverse(acc) : doHead.bind(null, cdr(lst), i-1, cons(car(lst),acc))
 
-const head = (lst, i) => T(dohead.bind(null, lst, i, NIL))
+const head = (lst, i) => T(doHead.bind(null, lst, i, NIL))
 
 const lt = (a, b) => a < b
 
@@ -101,19 +101,19 @@ const merge = (lst1, lst2, cmp) => isNil(lst1) ? lst2 : isNil(lst2) ? lst1 :
 		cons(car(lst1), merge(cdr(lst1), lst2, cmp)) :
 		cons(car(lst2), merge(lst1, cdr(lst2), cmp))
 
-const dosort = (lr, part, cmp) => isNil(part) ?
-	isNil(cdr(lr)) ? car(lr) : dosort(part, lr, cmp) :
+const doSort = (lr, part, cmp) => isNil(part) ?
+	isNil(cdr(lr)) ? car(lr) : doSort(part, lr, cmp) :
 	isNil(cdr(part)) ?
-		dosort(cons(car(part), lr), cdr(part), cmp) :
-		dosort(cons(merge(car(part), cadr(part), cmp), lr), cddr(part), cmp)
+		doSort(cons(car(part), lr), cdr(part), cmp) :
+		doSort(cons(merge(car(part), cadr(part), cmp), lr), cddr(part), cmp)
 
-const sort = (lst, cmp) => dosort(NIL, map(lst, list), cmp)
+const sort = (lst, cmp) => doSort(NIL, map(lst, list), cmp)
 
-const dorange = (init,limit,step,acc) => (init === limit || step === 0 || (init > limit && step > 0 ) || (limit > init && step < 0 )) ? 
+const doRange = (init,limit,step,acc) => (init === limit || step === 0 || (init > limit && step > 0 ) || (limit > init && step < 0 )) ? 
 	acc : 
-	dorange.bind(null,init+step,limit,step,cons(init,acc))
+	doRange.bind(null,init+step,limit,step,cons(init,acc))
 
-const range = (init,limit,step) => T(dorange.bind(null, limit === undefined ? init : limit, limit === undefined ? 0 : init, step === undefined ? -1 : -step, NIL ))
+const range = (init,limit,step) => T(doRange.bind(null, limit === undefined ? init : limit, limit === undefined ? 0 : init, step === undefined ? -1 : -step, NIL ))
 
 const equal = (lst1, lst2) => lst1 === lst2 ||
 	(isNil(lst1) && isNil(lst2)) ||  
