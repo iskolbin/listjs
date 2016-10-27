@@ -56,18 +56,22 @@ const count = (lst, p) => reduce(lst, (v,n) => p(v) ? n+1 : n, 0)
 
 const fromArray = arr => arr instanceof Array ? arr.reduceRight( (acc,v) => rcons(acc,fromArray(v)), NIL ) : arr;
 
+const toArray = lst => reduce(lst, (v,arr) => {arr.push(v); return arr}, [] )
+
+// TODO convert objects to associative lists?
 const list = (...args) => fromArray(args)
 
 const fromObject = obj => (obj instanceof Object && !(obj instanceof Array)) ? (Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,fromObject( obj[k] )),acc), NIL )) : obj
 
+// TODO recursive cases?
 const toObject = lst => reduce(lst, (v,obj) => {obj[car(v)] = cdr(v); return obj}, {})
 
-const toArray = lst => reduce(lst, (v,arr) => {arr.push(v); return arr}, [] )
-
+// TODO ugly
 const doJoin = (lst, sep, dot, lbr, rbr) => isNil(lst) ? "" :
 	(isList(car(lst)) ? (lbr + doJoin(car(lst), sep, dot, lbr, rbr) + rbr) :
 		(String(car(lst)))) + (isList(cdr(lst)) ? (isNil(cdr(lst)) ? "" : (sep + doJoin(cdr(lst), sep, dot, lbr, rbr))) : (dot + String(cdr(lst))))
 
+// TODO ugly
 const join = (lst, sep, dot, lbr, rbr) => (lbr||"(") + doJoin(lst, sep||" ", dot||" . ", lbr||"(", rbr||")") + (rbr||")")
 
 const sum = lst => reduce(lst, (v,acc) => v + acc, 0)   
@@ -77,6 +81,8 @@ const toString = (lst, sep) => join(lst, sep)
 const length = (lst) => reduce(lst, (v,acc) => acc + 1, 0)
 
 const prependReversed = (lst,lst2) => reduce(lst2, cons, lst)
+
+const prepend = (lst,lst2) => prependReversed(lst,reverse(lst2))
 
 const append = (lst,lst2) => isNil(lst) ? lst2 : isNil(lst2) ? lst : reverse( prependReversed( reverse(lst), lst2))
 
@@ -132,7 +138,7 @@ const apply = lst => (car(lst).apply(this, cdr(lst).toArray()))
 module.exports = {
 	NIL, cons, rcons, car, cdr, cadr, cddr, caar, ref,
 	reduce, reduceRight, map, filter, reverse, tail, head,
-	filterMap, mapFilter, flatten,	prependReversed, append, partition, 
+	filterMap, mapFilter, flatten,	prepend, prependReversed, append, partition,
 	merge, sort, range, memq, assq, member, assoc, apply, equal,
 	fromArray, fromObject, toArray, toObject,
 	count, list, join, sum, length, toString, isList, isPair, isNil, isProperList,
