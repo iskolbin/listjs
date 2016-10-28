@@ -26,6 +26,8 @@ const cons = (h,t) => new Pair(h,t)
 
 const rcons = (h,t) => new Pair(t,h)
 
+const acons = (lst,k,v) => new Pair(new Pair(k,v), lst)
+
 const car = lst => lst.h
 
 const cdr = lst => lst.t
@@ -136,7 +138,7 @@ const assoc = (lst, key) => isNil(lst) ? NIL : equal(key, caar(lst)) ? car(lst) 
 const apply = lst => (car(lst).apply(this, cdr(lst).toArray()))
 
 module.exports = {
-	NIL, cons, rcons, car, cdr, cadr, cddr, caar, ref,
+	NIL, cons, rcons, acons, car, cdr, cadr, cddr, caar, ref,
 	reduce, reduceRight, map, filter, reverse, tail, head,
 	filterMap, mapFilter, flatten,	prepend, prependReversed, append, partition,
 	merge, sort, range, memq, assq, member, assoc, apply, equal,
