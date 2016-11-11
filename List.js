@@ -19,8 +19,6 @@ const doReduceWhile = (lst, f, acc) => {
 	}
 }
 
-const hasToJS = ( obj ) => Object.prototype.hasOwnProperty( obj, 'toJS' )
-
 class List {
 	static T(f) {
 		while (f && f instanceof Function) {
@@ -53,8 +51,8 @@ class List {
 		}
 	}
 
-	toJS() {
-		return this.reduce( (acc,v) =>	{acc.push( hasToJS( v ) ? v.toJS() : v ); return acc}, [] )
+	toArray() {
+		return this.reduce( (acc,v) =>	{acc.push( List.is(v) ? v.toArray() : v ); return acc}, [] )
 	}
 
 	constructor( h, t ) {
