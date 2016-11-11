@@ -1,34 +1,12 @@
-const doReduce = (lst, f, acc) => {
-	if (lst.isNil()) {
-		return acc
-	} else {
-		return doReduce.bind( null, lst.pop(), f, f( acc, lst.peek()))
-	}
-}
-
-const doReduceWhile = (lst, f, acc) => {
-	if (lst.isNil()) {
-		return acc
-	} else {
-		const [ok, newAcc] = f( acc, this.peek())
-		if ( ok ) {
-			return doReduceWhile.bind( null, this.pop(), f, newAcc )
-		} else {
-			return acc
-		}
-	}
-}
+const hasEqualMethod = (obj) => Object.prototype.hasOwnProperty( obj, 'equal' )
 
 class List {
-	static T(f) {
-		while (f && f instanceof Function) {
-			f = f.apply(f.context, f.args)
-		}
-		return f
-	}
-
 	static is( lst ) {
 		return lst instanceof List
+	}
+
+	static isNil( lst ) {
+		return lst === List.Nil
 	}
 
 	static of( ...col ) {
@@ -50,6 +28,21 @@ class List {
 			return arr
 		}
 	}
+
+	static equalLists( lst1, lst2 ) {
+		if ( lst1 === lst2 ) {
+			return true
+		} else if ( List.is( lst1 ) && List.is( lst2 )) {
+			return List.equalLists( lst1.peek(), lst2.peek()) && List.equalLists( lst1.pop(), lst2.pop())
+		} else if ( List.is( lst1 ) || List.is( lst2 )) {
+			return false
+		} else if ( hasEqualMethod( lst1 )) {
+			return lst1.equal( lst2 )
+		} else {
+			return false
+		}
+	}
+
 
 	toArray() {
 		return this.reduce( (acc,v) =>	{acc.push( List.is(v) ? v.toArray() : v ); return acc}, [] )
@@ -91,24 +84,22 @@ class List {
 	}
 
 	reduceWhile( f, acc ) {
-		if ( this.isNil()) {
-			return acc
-		} else {
-			const [ok, newAcc] = f( acc, this.peek())
-			if ( ok ) {
-				return List.T( doReduceWhile.bind( null, this.pop(), f, newAcc ))
-			} else {
-				return newAcc
-			}
+		let lst = this
+		let ok = true
+		while ( ok && !lst.isNil()) {
+			[ok,acc] = f( acc, lst.peek())
+			lst = lst.pop()
 		}
+		return acc
 	}
 
 	reduce( f, acc ) {
-		if ( this.isNil()) {
-			return acc
-		} else {
-			return List.T( doReduce.bind( null, this.pop(), f, f( acc, this.peek())))
+		let lst = this
+		while ( !lst.isNil()) {
+			acc = f( acc, lst.peek())
+			lst = lst.pop()
 		}
+		return acc
 	}
 	
 	reverse() {
@@ -229,36 +220,55 @@ class List {
 		cmp = !cmp ? ((a,b) => a < b) : cmp
 		return List.Nil.doSort( this.map((v) => List.Nil.push(v)), cmp )
 	}
+
+	tail( n ) {
+		let lst = this
+		while ( !lst.isNil() && n-- > 0 ) {
+			lst = lst.pop()
+		}
+		return lst
+	}
+
+	head( n ) {
+		let lst = List.Nil
+		let current = this
+		while ( !current.isNil() && n-- > 0 ) {
+			lst = lst.push( current.peek())
+			current = current.pop()
+		}
+		return lst.reverse()
+	}
+
+	static range( init, limit, step ) {
+		let lst = List.Nil
+		if ( !init ) {
+			return lst
+		}
+		if ( !limit ) {
+			limit = init
+			init = 0
+		}
+		step = !step ? (init > limit ? -1 : 1) : step
+		if (((init > limit && step < 0) || (init < limit && step > 0)) && step !== 0 ) {
+			if ( step < 0 ) {
+				for ( let i = init; i > limit; i += step ) {
+					lst = lst.push( i )
+				}
+			} else {
+				for ( let i = init; i < limit; i += step ) {
+					lst = lst.push( i )
+				}
+			}
+		}
+		return lst.reverse()
+	}
+
+	equal( lst ) {
+		return List.equalLists( this, lst )
+	}
 }
 
 List.Nil = new List(undefined,null)
 List.Nil.t = List.Nil
 
 module.exports = List
-	/*
-const doTail = (lst, i) => isNil(lst) || i === 0 ? lst : doTail.bind(null, cdr(lst), i-1)
-
-const tail = (lst, i) => T(doTail.bind(null, lst, i))
-
-const doHead = (lst, i, acc) => isNil(lst) || i === 0 ? reverse(acc) : doHead.bind(null, cdr(lst), i-1, cons(car(lst),acc))
-
-const head = (lst, i) => T(doHead.bind(null, lst, i, NIL))
-
-const doRange = (init,limit,step,acc) => (init === limit || step === 0 || (init > limit && step > 0 ) || (limit > init && step < 0 )) ? 
-	acc : 
-	doRange.bind(null,init+step,limit,step,cons(init,acc))
-
-const range = (init,limit,step) => T(doRange.bind(null, limit === undefined ? init : limit, limit === undefined ? 0 : init, step === undefined ? -1 : -step, NIL ))
-
-const equal = (lst1, lst2) => lst1 === lst2 ||
-	(isNil(lst1) && isNil(lst2)) ||  
-	(isList(lst1) && isList(lst2) && equal(car(lst1), car(lst2)) && equal(cdr(lst1), cdr(lst2)))
-
-const memq = (lst, item) => isNil(lst) ? NIL : item === car(lst) ? lst : memq(cdr(lst), item)
-
-const assq = (lst, key) => isNil(lst) ? NIL : key === caar(lst) ? car(lst) : assq(cdr(lst), key)
-
-const member = (lst, item) => isNil(lst) ? NIL : equal(item,car(lst)) ? lst : member(cdr(lst), item)
-
-const assoc = (lst, key) => isNil(lst) ? NIL : equal(key, caar(lst)) ? car(lst) : assoc(cdr(lst), key)
-	*/
