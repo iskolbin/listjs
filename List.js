@@ -1,99 +1,243 @@
-"use strict"
-
-const T = function(f) {
-	while (f && f instanceof Function) {
-		f = f.apply(f.context, f.args)
+const doReduce = (lst, f, acc) => {
+	if (lst.isNil()) {
+		return acc
+	} else {
+		return doReduce.bind( null, lst.pop(), f, f( acc, lst.peek()))
 	}
-	return f
 }
 
-const Pair = function(h,t) {
-	this.h = h
-	this.t = t
+const doReduceWhile = (lst, f, acc) => {
+	if (lst.isNil()) {
+		return acc
+	} else {
+		const [ok, newAcc] = f( acc, this.peek())
+		if ( ok ) {
+			return doReduceWhile.bind( null, this.pop(), f, newAcc )
+		} else {
+			return acc
+		}
+	}
 }
 
-const NIL = new Pair()
+const hasToJS = ( obj ) => Object.prototype.hasOwnProperty( obj, 'toJS' )
 
-const isList = lst => lst instanceof Pair
+class List {
+	static T(f) {
+		while (f && f instanceof Function) {
+			f = f.apply(f.context, f.args)
+		}
+		return f
+	}
 
-const isPair = lst => lst instanceof Pair && lst !== NIL
+	static is( lst ) {
+		return lst instanceof List
+	}
 
-const isNil = lst => lst === NIL
+	static of( col ) {
+		if ( col instanceof Array ) {
+			return List.fromArray( col );
+		} else {
+			let out = List.Nil;
+			for ( v of col ) {
+				out = out.push( v )
+			}
+			return out.reverse()
+		}
+	}
 
-const isProperList = lst => isNil(lst) || (isPair(lst) && isProperList(cdr(lst)))
+	static fromArray( arr ) {
+		if ( arr instanceof Array ) {
+			return arr.reduceRight( (acc,v) => acc.push( List.fromArray( v )), List.Nil )
+		} else {
+			return arr
+		}
+	}
 
-const cons = (h,t) => new Pair(h,t)
+	toJS() {
+		return this.reduce( (acc,v) =>	{acc.push( hasToJS( v ) ? v.toJS() : v ); return acc}, [] )
+	}
 
-const rcons = (h,t) => new Pair(t,h)
+	constructor( h, t ) {
+		this.h = h
+		this.t = t
+	}
 
-const acons = (lst,k,v) => new Pair(new Pair(k,v), lst)
+	push( v ) {
+		return new List( v, this )
+	}
 
-const car = lst => lst.h
+	pop() {
+		return this.t
+	}
 
-const cdr = lst => lst.t
+	peek() {
+		return this.h
+	}
 
-const cadr = lst => car(cdr(lst))
+	isNil() {
+		return this === List.Nil
+	}
 
-const cddr = lst => cdr(cdr(lst))
+	isPair() {
+		return !this.isNil()
+	}
 
-const caar = lst => car(car(lst))
+	isProperList() {
+		if ( this.isNil()) {
+			return true
+		} else if ( !( List.is( this.pop()))) {
+			return false
+		} else {
+			return this.pop().isProperList()
+		}
+	}
 
-const doReduce = (lst, f, acc) => isNil(lst) ? acc : doReduce.bind(null, cdr(lst), f, f(car(lst), acc))
+	reduceWhile( f, acc ) {
+		if ( this.isNil()) {
+			return acc
+		} else {
+			const [ok, newAcc] = f( acc, this.peek())
+			if ( ok ) {
+				return List.T( doReduceWhile.bind( null, this.pop(), f, newAcc ))
+			} else {
+				return newAcc
+			}
+		}
+	}
 
-const reduce = (lst, f, acc) => T(doReduce.bind(null, cdr(lst), f, f(car(lst), acc)))
+	reduce( f, acc ) {
+		if ( this.isNil()) {
+			return acc
+		} else {
+			return List.T( doReduce.bind( null, this.pop(), f, f( acc, this.peek())))
+		}
+	}
+	
+	reverse() {
+		return this.reduce( (acc,v) => acc.push(v), List.Nil )
+	}
 
-const reverse = lst => reduce(lst, cons, NIL)
+	reduceRight( f, acc ) {
+		return this.reverse().reduce( f, acc )
+	}
 
-const reduceRight = (lst, f, acc) => reduce(reverse(lst), f, acc)
+	mapReverse( f ) {
+		return this.reduce( (acc,v) => acc.push( f(v)), List.Nil )
+	}
 
-const map = (lst, f) => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) => cons(f(v), lst_), NIL)
+	map( f ) {
+		return this.mapReverse( f ).reverse()
+	}
 
-const filter = (lst, p) => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) => p(v) ? cons(v,lst_) : lst_, NIL)
+	filterReverse( p ) {
+		return this.reduce( (acc,v) => p(v) ? acc.push(v) : acc )
+	}
 
-const mapFilter = (lst, f, p) => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) => {const v_ = f(v); return p(v_) ? cons(v_, lst_) : lst_}, NIL)
+	filter( p ) {
+		return this.filterReverse( p ).reverse()
+	}
 
-const filterMap = (lst, p, f) => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) => p(v) ? cons(f(v), lst_) : lst_, NIL)
+	every( p ) {
+		return this.reduceWhile( (acc,v) => !p(v) ? [false,false] : [true,true], true ) 
+	}
 
-const count = (lst, p) => reduce(lst, (v,n) => p(v) ? n+1 : n, 0)
+	some( p ) {
+		return this.reduceWhile( (acc,v) => p(v) ? [false,true] : [true,false], false ) 
+	}
 
-const fromArray = arr => arr instanceof Array ? arr.reduceRight( (acc,v) => rcons(acc,fromArray(v)), NIL ) : arr;
+	find( p ) {
+		return this.reduceWhile( (acc,v) => p(v) ? [false,v] : [true,undefined], undefined )
+	}
 
-const toArray = lst => reduce(lst, (v,arr) => {arr.push(v); return arr}, [] )
+	count( p ) {
+		return this.reduce( (acc,v) => p(v) ? acc + 1 : acc, 0 )
+	}
 
-// TODO convert objects to associative lists?
-const list = (...args) => fromArray(args)
+	sum() {
+		return this.reduce( (acc,v) => acc + v, 0 )
+	}
 
-const fromObject = obj => (obj instanceof Object && !(obj instanceof Array)) ? (Object.keys(obj).reduceRight( (acc,k) => cons(cons(k,fromObject( obj[k] )),acc), NIL )) : obj
+	get length() {
+		return this.count( (v) => true )
+	}
 
-// TODO recursive cases?
-const toObject = lst => reduce(lst, (v,obj) => {obj[car(v)] = cdr(v); return obj}, {})
+	// TODO
+	slice( begin, end ) {
+	}
 
-// TODO ugly
-const doJoin = (lst, sep, dot, lbr, rbr) => isNil(lst) ? "" :
-	(isList(car(lst)) ? (lbr + doJoin(car(lst), sep, dot, lbr, rbr) + rbr) :
-		(String(car(lst)))) + (isList(cdr(lst)) ? (isNil(cdr(lst)) ? "" : (sep + doJoin(cdr(lst), sep, dot, lbr, rbr))) : (dot + String(cdr(lst))))
+	concatReversed( lst ) {
+		return this.reduce( (acc,v) => acc.push(v), lst )
+	}
 
-// TODO ugly
-const join = (lst, sep, dot, lbr, rbr) => (lbr||"(") + doJoin(lst, sep||" ", dot||" . ", lbr||"(", rbr||")") + (rbr||")")
+	concat( lst ) {
+		return lst.concatReversed( this.reverse() ).reverse()
+	}
 
-const sum = lst => reduce(lst, (v,acc) => v + acc, 0)   
+	concatHead( lst ) {
+		return lst.reverse().concatReversed( this )
+	}
 
-const toString = (lst, sep) => join(lst, sep)
+	flatten() {
+		if ( this.isNil()) {
+			return this
+		} else {
+			return this.reduceRight( (acc,v) => (List.is( v )) ? v.flatten().concat( acc ) : acc.push(v), List.Nil )
+		}
+	}
 
-const length = (lst) => reduce(lst, (v,acc) => acc + 1, 0)
+	partition( p ) {
+		return new Pair( this.filter(p), this.filter( (v) => !p(v)))
+	}
 
-const prependReversed = (lst,lst2) => reduce(lst2, cons, lst)
+	get( index ) {
+		let lst = this
+		while (index-- > 0) {
+			lst = lst.pop()	
+		}
+		return lst.peek()
+	}
+	
+	merge( lst, cmp ) {
+		if ( this.isNil()) {
+			return lst 
+		} else if (lst.isNil()) {
+			return this;
+		} else {
+			if ( cmp( this.peek(), lst.peek())) {
+				return new List( this.peek(), this.pop().merge( lst, cmp ))
+			} else {
+				return new List( lst.peek(), this.merge( lst.pop(), cmp ))
+			}
+		}
+	}
 
-const prepend = (lst,lst2) => prependReversed(lst,reverse(lst2))
+	doSort( part, cmp ) {
+		if ( part.isNil()) {
+			if ( this.pop().isNil()) {
+				return this.peek()
+			} else {
+				return part.doSort( this, cmp )
+			}
+		} else {
+			if ( part.pop().isNil()) {
+				return new List( part.peek(), this ).doSort( part.pop(), cmp )
+			} else {
+				return new List( part.peek().merge( part.pop().peek(), cmp ), this ).doSort( part.pop().pop(), cmp )
+			}
+		}
+	}
 
-const append = (lst,lst2) => isNil(lst) ? lst2 : isNil(lst2) ? lst : reverse( prependReversed( reverse(lst), lst2))
+	sort( cmp ) {
+		cmp = !cmp ? ((a,b) => a < b) : cmp
+		return List.Nil.doSort( this.map((v) => List.Nil.push(v)), cmp )
+	}
+}
 
-const flatten = lst => isNil(lst) ? NIL : reduceRight(lst, (v,lst_) => isList(v) ? append(flatten(v),lst_) : cons(v,lst_), NIL)
+List.Nil = new List(undefined,null)
+List.Nil.t = List.Nil
 
-const partition = (lst, p) => new Pair(filter(lst,p), filter(lst,(v)=>!p(v)))
-
-const ref = (lst, i) => isNil(lst) ? NIL : i === 0 ? car(lst) : ref(cdr(lst), i-1)
-
+module.exports = List
+	/*
 const doTail = (lst, i) => isNil(lst) || i === 0 ? lst : doTail.bind(null, cdr(lst), i-1)
 
 const tail = (lst, i) => T(doTail.bind(null, lst, i))
@@ -101,21 +245,6 @@ const tail = (lst, i) => T(doTail.bind(null, lst, i))
 const doHead = (lst, i, acc) => isNil(lst) || i === 0 ? reverse(acc) : doHead.bind(null, cdr(lst), i-1, cons(car(lst),acc))
 
 const head = (lst, i) => T(doHead.bind(null, lst, i, NIL))
-
-const lt = (a, b) => a < b
-
-const merge = (lst1, lst2, cmp) => isNil(lst1) ? lst2 : isNil(lst2) ? lst1 : 
-	(cmp||lt)(car(lst1),car(lst2)) ? 
-		cons(car(lst1), merge(cdr(lst1), lst2, cmp)) :
-		cons(car(lst2), merge(lst1, cdr(lst2), cmp))
-
-const doSort = (lr, part, cmp) => isNil(part) ?
-	isNil(cdr(lr)) ? car(lr) : doSort(part, lr, cmp) :
-	isNil(cdr(part)) ?
-		doSort(cons(car(part), lr), cdr(part), cmp) :
-		doSort(cons(merge(car(part), cadr(part), cmp), lr), cddr(part), cmp)
-
-const sort = (lst, cmp) => doSort(NIL, map(lst, list), cmp)
 
 const doRange = (init,limit,step,acc) => (init === limit || step === 0 || (init > limit && step > 0 ) || (limit > init && step < 0 )) ? 
 	acc : 
@@ -134,20 +263,4 @@ const assq = (lst, key) => isNil(lst) ? NIL : key === caar(lst) ? car(lst) : ass
 const member = (lst, item) => isNil(lst) ? NIL : equal(item,car(lst)) ? lst : member(cdr(lst), item)
 
 const assoc = (lst, key) => isNil(lst) ? NIL : equal(key, caar(lst)) ? car(lst) : assoc(cdr(lst), key)
-
-const apply = lst => (car(lst).apply(this, cdr(lst).toArray()))
-
-module.exports = {
-	NIL, cons, rcons, acons, car, cdr, cadr, cddr, caar, ref,
-	reduce, reduceRight, map, filter, reverse, tail, head,
-	filterMap, mapFilter, flatten,	prepend, prependReversed, append, partition,
-	merge, sort, range, memq, assq, member, assoc, apply, equal,
-	fromArray, fromObject, toArray, toObject,
-	count, list, join, sum, length, toString, isList, isPair, isNil, isProperList,
-} 
-
-Object.keys( module.exports )
-	.forEach( (k) => Pair.prototype[k] = function() {
-		Array.prototype.unshift.call(arguments, this)
-		return module.exports[k].apply(this, arguments)
-	})
+	*/
