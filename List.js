@@ -31,7 +31,7 @@ class List {
 		return lst instanceof List
 	}
 
-	static of( col ) {
+	static of( ...col ) {
 		if ( col instanceof Array ) {
 			return List.fromArray( col );
 		} else {
