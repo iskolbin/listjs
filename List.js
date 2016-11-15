@@ -1,5 +1,7 @@
 const hasEqualMethod = (obj) => Object.prototype.hasOwnProperty( obj, 'equal' )
 
+const hasToJSMethod = (obj) => Object.prototype.hasOwnProperty( obj, 'toJS' )
+
 class List {
 	static is( lst ) {
 		return lst instanceof List
@@ -43,9 +45,12 @@ class List {
 		}
 	}
 
-
 	toArray() {
 		return this.reduce( (acc,v) =>	{acc.push( List.is(v) ? v.toArray() : v ); return acc}, [] )
+	}
+
+	toJS() {
+		return this.reduce( (acc,v) => {acc.push( hasToJSMethod(v) ? v.toJS() : v ); return acc}, [] )
 	}
 
 	constructor( h, t ) {
@@ -67,20 +72,6 @@ class List {
 
 	isNil() {
 		return this === List.Nil
-	}
-
-	isPair() {
-		return !this.isNil()
-	}
-
-	isProperList() {
-		if ( this.isNil()) {
-			return true
-		} else if ( !( List.is( this.pop()))) {
-			return false
-		} else {
-			return this.pop().isProperList()
-		}
 	}
 
 	reduceWhile( f, acc ) {
