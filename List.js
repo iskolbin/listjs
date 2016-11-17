@@ -45,10 +45,6 @@ class List {
 		}
 	}
 
-	toArray() {
-		return this.reduce( (acc,v) =>	{acc.push( List.isList(v) ? v.toArray() : v ); return acc}, [] )
-	}
-
 	toJS() {
 		return this.reduce( (acc,v) => {acc.push( hasToJSMethod(v) ? v.toJS() : v ); return acc}, [] )
 	}
