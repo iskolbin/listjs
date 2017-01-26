@@ -2,7 +2,7 @@ const hasEqualMethod = (obj) => Object.prototype.hasOwnProperty( obj, 'equal' )
 
 const hasToJSMethod = (obj) => Object.prototype.hasOwnProperty( obj, 'toJS' )
 
-class List {
+class List extends Array {
 	static isList( lst ) {
 		return lst instanceof List
 	}
@@ -50,8 +50,7 @@ class List {
 	}
 
 	constructor( h, t ) {
-		this.h = h
-		this.t = t
+		super( h, t )
 	}
 
 	unshift( ...v ) {
@@ -63,7 +62,7 @@ class List {
 	}
 
 	shift() {
-		return this.t
+		return this[1]//.t
 	}
 
 	pop() {
@@ -75,7 +74,7 @@ class List {
 	}
 
 	first() {
-		return this.h
+		return this[0]//;.h
 	}
 
 	last() {
@@ -297,6 +296,6 @@ class List {
 }
 
 List.Nil = new List(undefined,null)
-List.Nil.t = List.Nil
+List.Nil[1] = List.Nil
 
 module.exports = List
